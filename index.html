@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Razer Product Catalog | Iontech</title>
+<meta name="description" content="Iontech Razer product catalog and price list — works offline.">
+<meta name="theme-color" content="#0b0d0b">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="assets/icon-192.png">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <img src="assets/razer-logo.png" alt="Razer" class="logo-razer">
+    <span class="brand-x" aria-hidden="true"></span>
+    <img src="assets/iontech-logo.png" alt="Iontech" class="logo-ion">
+  </div>
+  <div class="search">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
+    <input id="q" type="search" placeholder="Search name, model no., UPC or keyword…" autocomplete="off" enterkeyhint="search" aria-label="Search products">
+    <button id="qClear" class="icon-btn" aria-label="Clear search" hidden>×</button>
+  </div>
+  <div class="status" id="netStatus" title="Connection status"><i></i><span>Online</span></div>
+</header>
+
+<nav class="tabs" id="tabs" role="tablist" aria-label="Product sections"></nav>
+
+<main id="view">
+  <section class="toolbar">
+    <div class="result-line"><strong id="count">0</strong> <span id="countLabel">products</span><span id="searchNote"></span></div>
+    <div class="controls">
+      <button class="btn ghost" id="filterBtn" aria-expanded="false" aria-controls="filters">
+        <svg viewBox="0 0 24 24"><path d="M3 5h18M6 12h12M10 19h4"/></svg>Filters<b id="filterCount" hidden></b></button>
+      <label class="select"><span>Sort</span>
+        <select id="sort">
+          <option value="new">Newest arrival</option>
+          <option value="price-asc">Price: low to high</option>
+          <option value="price-desc">Price: high to low</option>
+          <option value="family">Product family (A–Z)</option>
+        </select>
+      </label>
+      <div class="seg" role="group" aria-label="Layout">
+        <button id="gridBtn" class="on" aria-label="Grid view" title="Grid view"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></button>
+        <button id="listBtn" aria-label="List view" title="List view"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+      </div>
+    </div>
+  </section>
+
+  <section class="filters" id="filters" hidden>
+    <div class="filters-head"><h2>Filters</h2><button class="btn link" id="clearFilters">Clear all</button><button class="icon-btn close-sheet" id="closeFilters" aria-label="Close filters">×</button></div>
+    <div class="fgroup" id="catGroup"><h3>Category</h3><div class="chips" id="catChips"></div></div>
+    <div class="fgroup"><h3>Product family</h3><div class="chips" id="famChips"></div></div>
+    <button class="btn primary apply-sheet" id="applyFilters">Show results</button>
+  </section>
+
+  <section id="grid" class="grid" aria-live="polite"></section>
+  <p class="empty" id="empty" hidden>No products match. Try another keyword or clear the filters.</p>
+</main>
+
+<aside class="compare-tray" id="tray" hidden>
+  <div class="tray-items" id="trayItems"></div>
+  <div class="tray-actions">
+    <button class="btn ghost" id="trayClear">Clear</button>
+    <button class="btn primary" id="trayGo">Compare <b id="trayN">0</b>/4</button>
+  </div>
+</aside>
+
+<div class="overlay" id="overlay" hidden>
+  <div class="sheet" id="sheet" role="dialog" aria-modal="true"></div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<footer class="foot">
+  <p id="srcLine"></p>
+  <p>Prices in PHP. Specifications transcribed from official Razer product pages. For Iontech sales &amp; dealer use.</p>
+</footer>
+
+<script src="data/products.js" defer></script>
+<script src="app.js" defer></script>
+</body>
+</html>
