@@ -398,3 +398,94 @@ body.lock{overflow:hidden}
   #printView .ph{background:#ff5a1f}#printView .pp{background:#e08a00}
   body:not(.printing) .topbar,body:not(.printing) .tabbar,body:not(.printing) .filters,body:not(.printing) .compare-tray,body:not(.printing) .actions,body:not(.printing) .cmp{display:none!important}
 }
+
+/* ===== MOCKUP v6: tagline + compact tiles ===== */
+.brand-title{font-size:17px;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap}
+.brand-title .bt-2{color:var(--green)}
+.grid:not(.list){grid-template-columns:repeat(auto-fill,minmax(205px,1fr));gap:12px;row-gap:12px}
+.thumb{aspect-ratio:4/3}
+.thumb img{width:74%;height:74%}
+.grid:not(.list) .card .body>*{margin:0 12px}
+.grid:not(.list) .card .meta{padding-top:10px;font-size:11px}
+.pname{font-size:15px}
+.grid:not(.list) .card .ids{padding-top:6px}
+.ids{font-size:11.5px}.ids dd{font-size:11px}
+.grid:not(.list) .card .ksp{padding-top:6px}
+.ksp{font-size:12px;gap:2px}
+.ksp li::before{margin-top:6px}
+.grid:not(.list) .card .prices{margin-top:8px}
+.price{padding:5px 7px}
+.price span{font-size:9.5px}
+.price b{font-size:14px}
+.grid:not(.list) .card .actions{padding:8px 0 12px}
+.actions .btn{height:32px;font-size:12.5px;padding:0 8px;gap:6px}
+.actions .btn svg{width:15px;height:15px}
+.badges{top:8px;left:8px}.badge{font-size:10px;padding:2px 6px}
+.cmp{top:6px;right:6px;padding:3px 8px;font-size:11px}
+.cmp input{width:13px;height:13px}
+@media (max-width:1024px){.brand-title{font-size:14px}.brand-title .bt-2{display:block;font-size:12px}}
+@media (max-width:720px){
+  .grid:not(.list){grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+  .brand-title{font-size:12px;letter-spacing:.04em}.brand-title .bt-2{font-size:10.5px}
+  .pname{font-size:13.5px}
+  .price b{font-size:13px}
+  .actions .btn{height:30px}
+}
+/* tagline one step bigger */
+.brand-title{font-size:20px}
+@media (max-width:1024px){.brand-title{font-size:16px}.brand-title .bt-2{font-size:13.5px}}
+@media (max-width:720px){.brand-title{font-size:13.5px}.brand-title .bt-2{font-size:11.5px}}
+
+/* ===== MOCKUP v8: Razer-style family pop-out strip, no left sidebar ===== */
+main{grid-template-columns:minmax(0,1fr)!important;display:block!important}
+.filters,#filterBtn{display:none!important}
+.famstrip{background:#161816;border-bottom:1px solid var(--line);animation:fsIn .22s ease}
+@keyframes fsIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+.fs-inner{display:flex;justify-content:center;gap:6px;padding:14px 20px 12px;overflow-x:auto;scrollbar-width:none;max-width:1600px;margin:0 auto}
+.fs-inner::-webkit-scrollbar{display:none}
+.fs-item{flex:none;display:flex;flex-direction:column;align-items:center;gap:6px;width:104px;padding:6px 4px 8px;background:none;border:0;border-radius:12px;color:#e6ebe6;position:relative}
+.fs-item:hover{background:rgba(255,255,255,.04)}
+.fs-ic{width:64px;height:56px;display:grid;place-items:center}
+.fs-ic img{max-width:100%;max-height:100%;object-fit:contain;opacity:.92;transition:filter .15s}
+.fs-ic b{font:700 18px var(--display);color:var(--dim);border:1.5px solid var(--line2);border-radius:10px;width:44px;height:44px;display:grid;place-items:center;text-transform:uppercase}
+.fs-ic.fs-all svg{width:34px;height:34px;stroke-width:1.6;color:#e6ebe6}
+.fs-nm{font:600 14.5px/1.2 var(--display);text-align:center;letter-spacing:.01em}
+.fs-new{font:700 10.5px var(--display);background:var(--green);color:#041004;border-radius:6px;padding:2px 7px;letter-spacing:.04em}
+.fs-item.on .fs-nm{color:var(--green)}
+.fs-item.on .fs-ic img{filter:brightness(0) saturate(100%) invert(68%) sepia(83%) saturate(553%) hue-rotate(60deg) brightness(97%);opacity:1}
+.fs-item.on .fs-ic.fs-all svg{color:var(--green)}
+.fs-item.on::after{content:"";position:absolute;left:28%;right:28%;bottom:0;height:3px;border-radius:3px;background:var(--green)}
+.toolbar{margin-top:4px}
+@media (max-width:1024px){.fs-inner{justify-content:flex-start}}
+@media (max-width:720px){
+  .fs-inner{padding:10px 10px 8px;gap:2px}
+  .fs-item{width:78px}
+  .fs-ic{width:46px;height:40px}
+  .fs-nm{font-size:12.5px}
+}
+
+/* clean line icons */
+.fs-ic{width:64px;height:54px}
+.fs-ic .ico{width:100%;height:100%;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;color:#e6ebe6;transition:color .15s}
+.fs-item:hover .ico{color:#fff}
+.fs-item.on .ico{color:var(--green)}
+#filterBtn{display:none!important}
+@media (max-width:720px){.fs-ic{width:46px;height:40px}.fs-ic .ico{stroke-width:2.3}}
+
+/* product-photo version */
+.fs-item{width:112px}
+.fs-ic.fs-ph{width:84px;height:66px;border-radius:12px;background:radial-gradient(circle at 50% 45%,#2a302a 0,#1a1e1a 72%);border:1px solid var(--line);transition:border-color .15s,box-shadow .15s}
+.fs-ic.fs-ph img{max-width:86%;max-height:86%;object-fit:contain;filter:none;opacity:1}
+.fs-ic.fs-ph .ico{width:60%;height:60%}
+.fs-item:hover .fs-ic.fs-ph{border-color:var(--line2)}
+.fs-item.on .fs-ic.fs-ph{border-color:var(--green);box-shadow:0 0 0 1px var(--green),0 0 18px rgba(68,214,44,.25)}
+.fs-item.on .fs-ic.fs-ph img{filter:none}
+@media (max-width:720px){.fs-item{width:84px}.fs-ic.fs-ph{width:66px;height:54px}}
+
+.fs-ic.fs-ph{background:radial-gradient(circle at 50% 42%,#4a524a 0,#2b302b 58%,#1e221e 100%);overflow:hidden}
+.fs-ic.fs-ph img{width:100%;height:100%;max-width:none;max-height:none;object-fit:contain;transform:none}
+/* transparent photo tiles */
+.fs-ic.fs-ph{background:none;border:0;box-shadow:none!important;border-radius:0;overflow:visible}
+.fs-ic.fs-ph img{filter:drop-shadow(0 0 7px rgba(255,255,255,.16)) drop-shadow(0 6px 10px rgba(0,0,0,.5));transition:transform .15s}
+.fs-item:hover .fs-ic.fs-ph img{transform:translateY(-2px)}
+.fs-item.on .fs-ic.fs-ph img{filter:drop-shadow(0 0 9px rgba(68,214,44,.55)) drop-shadow(0 6px 10px rgba(0,0,0,.5))}

@@ -60,6 +60,7 @@ const st = {
   tab: store.get('tab', 'all'),
   q: '',
   fams: new Set(),
+  subs: new Set(),
   cats: new Set(),
   sort: store.get('sort', 'new'),
   layout: store.get('layout', 'grid'),
@@ -76,6 +77,7 @@ function matches(opts = {}) {
     if (!tab.test(p)) continue;
     if (!opts.ignoreCat && st.cats.size && MULTI_CAT.has(tab.id) && !st.cats.has(p.category)) continue;
     if (!opts.ignoreFam && st.fams.size && !st.fams.has(p.family)) continue;
+    if (!opts.ignoreSub && st.subs.size && !st.subs.has(groupKey(p, tab.id))) continue;
     let sc = 1;
     if (toks.length) { sc = score(p, toks); if (!sc) continue; }
     out.push([p, sc]);
@@ -98,7 +100,7 @@ const famKey = p => p.family === 'Others' ? (p.subfamily || '') : p.family;
 /* ---------- render: tabs ---------- */
 function renderTabs() {
   $('#tabs').innerHTML = TABS.map(t => {
-    const n = matches({ tab: t.id, ignoreCat: true, ignoreFam: true }).length;
+    const n = matches({ tab: t.id, ignoreCat: true, ignoreFam: true, ignoreSub: true }).length;
     return `<button class="tab ${t.cls || ''}" role="tab" data-tab="${t.id}" aria-selected="${t.id === st.tab}">${esc(t.label)}<span class="n">${n}</span></button>`;
   }).join('');
 }
@@ -123,6 +125,34 @@ function renderFilters() {
   $('#filterCount').hidden = !n; $('#filterCount').textContent = n;
 }
 const chip = (kind, v, n, on) => `<button class="chip" data-${kind}="${esc(v)}" aria-pressed="${on}" ${!n && !on ? 'disabled' : ''}>${esc(v)}<small>${n}</small></button>`;
+
+/* ---------- family strip (Razer-style pop-out) ---------- */
+const CAT_REP = { Mouse: ['DeathAdder'], Headset: ['BlackShark'], Keyboard: ['BlackWidow', 'Huntsman'], Controller: ['Wolverine'], Streaming: ['Seiren'], Accessories: ['Base Station', 'Mouse Bungee'], Mousepad: ['Firefly', 'Goliathus'], Chair: ['Iskur'], Earbuds: ['Hammerhead'], Bag: ['Rogue'], Speakers: ['Nommo'] };
+const icon = p => p.image ? p.image.replace('img/', 'img/thumb/') : '';
+const groupKey = (p, tabId) => MULTI_CAT.has(tabId) ? p.category : (p.subfamily || p.family);
+function renderStrip() {
+  const tab = TABS.find(t => t.id === st.tab);
+  const base = matches({ ignoreSub: true });
+  const groups = new Map();
+  for (const [p] of base) {
+    const k = groupKey(p, st.tab);
+    const g = groups.get(k) || { n: 0, img: '', imgDate: -1, isNew: false };
+    g.n++; if (isNew(p)) g.isNew = true;
+    const pref = MULTI_CAT.has(st.tab) ? (CAT_REP[p.category] || []).indexOf(p.subfamily) : 0;
+    const score = (pref >= 0 ? 1e12 * (10 - pref) : 0) + (p.img_match === 'exact' ? 5e11 : 0) + (/black/i.test(p.name) || !/white|quartz|mercury|pink|green|edition|kuromi|hello kitty|minecraft|zzz|wuthering|niko|faker|cs2|counter/i.test(p.name) ? 2e11 : 0) + (p.hot ? 1e11 : 0) + (p.arrival || 0);
+    if (p.image && score > g.imgDate) { g.img = icon(p); g.imgDate = score; }
+    groups.set(k, g);
+  }
+  for (const k of st.subs) if (!groups.has(k)) groups.set(k, { n: 0, img: '', isNew: false });
+  const items = [...groups.entries()].sort((a, b) => b[1].n - a[1].n || a[0].localeCompare(b[0]));
+  const label = MULTI_CAT.has(st.tab) ? 'categories' : 'families';
+  $('#famstrip').innerHTML = `<div class="fs-inner">
+    <button class="fs-item ${st.subs.size ? '' : 'on'}" data-suball><span class="fs-ic fs-all"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><rect x="14" y="14" width="6" height="6" rx="1"/></svg></span><span class="fs-nm">All ${label}</span></button>
+    ${items.map(([k, g]) => `<button class="fs-item ${st.subs.has(k) ? 'on' : ''}" data-sub="${esc(k)}" title="${esc(k)} · ${g.n} products">
+      <span class="fs-ic fs-ph">${g.img ? `<img src="${esc(g.img)}" alt="" loading="lazy">` : (MULTI_CAT.has(st.tab) ? RZ_ICONS.category(k) : RZ_ICONS.family(k, tab.label))}</span>
+      <span class="fs-nm">${esc(k)}</span>${g.isNew ? '<span class="fs-new">NEW</span>' : ''}</button>`).join('')}
+  </div>`;
+}
 
 /* ---------- render: cards ---------- */
 function hl(text) {
@@ -184,7 +214,7 @@ function render() {
     }
   }
   $('#searchNote').innerHTML = note;
-  renderTabs(); renderFilters(); renderTray();
+  renderTabs(); renderFilters(); renderStrip(); renderTray();
   if (!st.q && st.sort === 'relevance') st.sort = 'new';
   document.querySelectorAll('[data-sort]').forEach(b => b.classList.toggle('on', b.dataset.sort === st.sort));
   $('#sortBtn .lbl').textContent = { new: 'Newest', 'price-asc': 'Price ↑', 'price-desc': 'Price ↓', family: 'Family', relevance: 'Best match' }[st.sort];
@@ -365,12 +395,14 @@ function go(hash) { pushed = true; location.hash = hash; }
 
 /* ---------- events ---------- */
 document.addEventListener('click', e => {
-  const t = e.target.closest('[data-sort],[data-export],[data-tab],[data-fam],[data-famall],[data-cat],[data-open],[data-copy],[data-copycard],[data-copyfull],[data-copyimg],[data-uncmp],[data-cmptoggle],[data-close]');
+  const t = e.target.closest('[data-sub],[data-suball],[data-sort],[data-export],[data-tab],[data-fam],[data-famall],[data-cat],[data-open],[data-copy],[data-copycard],[data-copyfull],[data-copyimg],[data-uncmp],[data-cmptoggle],[data-close]');
   if (!t) { if (e.target.id === 'overlay') closeOverlay(); return; }
   const d = t.dataset;
+  if (d.sub) { st.subs.has(d.sub) ? st.subs.delete(d.sub) : st.subs.add(d.sub); render(); return; }
+  if ('suball' in d) { st.subs.clear(); render(); return; }
   if (d.sort) { st.sort = d.sort; closeMenus(); render(); return; }
   if (d.export) { closeMenus(); const list = sorted(matches()); d.export === 'xlsx' ? exportXlsx(list) : exportPdf(list); return; }
-  if (d.tab) { st.tab = d.tab; st.cats.clear(); store.set('tab', st.tab); render(); window.scrollTo({ top: 0 }); t.scrollIntoView?.({ inline: 'center', block: 'nearest' }); }
+  if (d.tab) { st.tab = d.tab; st.cats.clear(); st.subs.clear(); st.fams.clear(); store.set('tab', st.tab); render(); window.scrollTo({ top: 0 }); t.scrollIntoView?.({ inline: 'center', block: 'nearest' }); }
   else if (d.fam) { st.fams.has(d.fam) ? st.fams.delete(d.fam) : st.fams.add(d.fam); render(); }
   else if ('famall' in d) { st.fams.clear(); render(); }
   else if (d.cat) { st.cats.has(d.cat) ? st.cats.delete(d.cat) : st.cats.add(d.cat); render(); }
@@ -433,6 +465,7 @@ $('#srcLine').textContent = `${C.meta.source || ''} · ${P.length} models · Upd
 function scopeLabel() {
   const t = TABS.find(x => x.id === st.tab).label;
   const bits = [t];
+  if (st.subs.size) bits.push([...st.subs].join(', '));
   if (st.fams.size) bits.push([...st.fams].join(', '));
   if (st.cats.size && MULTI_CAT.has(st.tab)) bits.push([...st.cats].join(', '));
   if (st.q) bits.push(`search “${st.q}”`);
