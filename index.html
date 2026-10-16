@@ -16,9 +16,10 @@
 <body>
 <header class="topbar">
   <div class="brand">
-    <img src="assets/razer-logo.png" alt="Razer" class="logo-razer">
-    <span class="brand-x" aria-hidden="true"></span>
     <img src="assets/iontech-logo.png" alt="Iontech" class="logo-ion">
+    <span class="brand-x" aria-hidden="true"></span>
+    <img src="assets/razer-logo.png" alt="Razer" class="logo-razer">
+    <span class="brand-title">Razer Pricelist</span>
   </div>
   <div class="search">
     <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
@@ -28,38 +29,53 @@
   <div class="status" id="netStatus" title="Connection status"><i></i><span>Online</span></div>
 </header>
 
+<div class="tabbar">
 <nav class="tabs" id="tabs" role="tablist" aria-label="Product sections"></nav>
-
-<main id="view">
-  <section class="toolbar">
-    <div class="result-line"><strong id="count">0</strong> <span id="countLabel">products</span><span id="searchNote"></span></div>
     <div class="controls">
       <button class="btn ghost" id="filterBtn" aria-expanded="false" aria-controls="filters">
         <svg viewBox="0 0 24 24"><path d="M3 5h18M6 12h12M10 19h4"/></svg>Filters<b id="filterCount" hidden></b></button>
-      <label class="select"><span>Sort</span>
-        <select id="sort">
-          <option value="new">Newest arrival</option>
-          <option value="price-asc">Price: low to high</option>
-          <option value="price-desc">Price: high to low</option>
-          <option value="family">Product family (A–Z)</option>
-        </select>
-      </label>
+      <div class="dd">
+        <button class="icon-pill" id="sortBtn" aria-haspopup="menu" title="Sort"><svg viewBox="0 0 24 24"><path d="M3 5h18l-7 8v6l-4 2v-8z"/></svg><span class="lbl">Newest</span></button>
+        <div class="menu" id="sortMenu" role="menu" hidden>
+          <h4>Sort by</h4>
+          <button data-sort="new" class="on">Newest arrival</button>
+          <button data-sort="price-asc">Price: low to high</button>
+          <button data-sort="price-desc">Price: high to low</button>
+          <button data-sort="family">Product family (A–Z)</button>
+        </div>
+      </div>
+      <div class="dd">
+        <button class="icon-pill" id="exportBtn" aria-haspopup="menu" title="Export"><svg viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M4 19h16"/></svg><span class="lbl">Export</span></button>
+        <div class="menu" id="exportMenu" role="menu" hidden>
+          <h4>Export <b id="expN">0</b> products shown</h4>
+          <button data-export="xlsx"><i class="ft xl">XLS</i>Excel (.xlsx)<small>All columns, ready to filter</small></button>
+          <button data-export="pdf"><i class="ft pdf">PDF</i>PDF price list<small>With photos, for sharing</small></button>
+        </div>
+      </div>
       <div class="seg" role="group" aria-label="Layout">
         <button id="gridBtn" class="on" aria-label="Grid view" title="Grid view"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></button>
         <button id="listBtn" aria-label="List view" title="List view"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
       </div>
     </div>
+</div>
+
+<main id="view">
+  <aside class="filters" id="filters" aria-label="Filters">
+    <div class="filters-head"><h2>Filters</h2><button class="btn link" id="clearFilters">Clear all</button><button class="icon-btn close-sheet" id="closeFilters" aria-label="Close filters">×</button></div>
+    <div class="fgroup"><h3>Product family</h3><div class="famlist" id="famChips"></div></div>
+    <div class="fgroup" id="catGroup"><h3>Category</h3><div class="chips" id="catChips"></div></div>
+    <button class="btn primary apply-sheet" id="applyFilters">Show results</button>
+  </aside>
+  <div class="content">
+  <section class="toolbar">
+    <div class="result-line"><strong id="count">0</strong> <span id="countLabel">products</span><span id="searchNote"></span></div>
   </section>
 
-  <section class="filters" id="filters" hidden>
-    <div class="filters-head"><h2>Filters</h2><button class="btn link" id="clearFilters">Clear all</button><button class="icon-btn close-sheet" id="closeFilters" aria-label="Close filters">×</button></div>
-    <div class="fgroup" id="catGroup"><h3>Category</h3><div class="chips" id="catChips"></div></div>
-    <div class="fgroup"><h3>Product family</h3><div class="chips" id="famChips"></div></div>
-    <button class="btn primary apply-sheet" id="applyFilters">Show results</button>
-  </section>
+
 
   <section id="grid" class="grid" aria-live="polite"></section>
   <p class="empty" id="empty" hidden>No products match. Try another keyword or clear the filters.</p>
+  </div>
 </main>
 
 <aside class="compare-tray" id="tray" hidden>
@@ -81,6 +97,7 @@
   <p>Prices in PHP. Specifications transcribed from official Razer product pages. For Iontech sales &amp; dealer use.</p>
 </footer>
 
+<div id="printView" aria-hidden="true"></div>
 <script src="data/products.js" defer></script>
 <script src="app.js" defer></script>
 </body>

@@ -6,20 +6,21 @@ const P = C.products;
 const BY = Object.fromEntries(P.map(p => [p.sku, p]));
 const FAMILIES = ['Viper','Barracuda','DeathAdder','BlackShark','Cobra','Atlas','Basilisk','BlackWidow','Gigantus','Goliathus','Hammerhead','Huntsman','Kiyo','Kraken','Leviathan','Nommo','Ornata','Orochi','Seiren','Others'];
 const TABS = [
-  { id: 'onhand', label: 'On Hand Items', test: p => p.onhand },
+  { id: 'all', label: 'All Products', test: () => true },
+  { id: 'hot', label: 'Hot Items', test: p => p.hot, cls: 'hot' },
   { id: 'mouse', label: 'Mouse', test: p => p.category === 'Mouse' },
   { id: 'headset', label: 'Headset', test: p => p.category === 'Headset' },
   { id: 'keyboard', label: 'Keyboard', test: p => p.category === 'Keyboard' },
   { id: 'controller', label: 'Controller', test: p => p.category === 'Controller' },
   { id: 'streaming', label: 'Streaming', test: p => p.category === 'Streaming' },
   { id: 'promos', label: 'Promos', test: p => p.promo != null, cls: 'promo' },
-  { id: 'all', label: 'All Products', test: () => true },
 ];
-const MULTI_CAT = new Set(['onhand', 'promos', 'all']);
+const MULTI_CAT = new Set(['promos', 'all', 'hot']);
 const BUILT = Date.parse((C.meta.built || '').replace(' ', 'T')) || Date.now();
 const NEW_WINDOW = 90 * 864e5;
 
 const $ = s => document.querySelector(s);
+const short = n => String(n || '').replace(/^Razer(™)?\s+/i, '');
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const peso = n => n == null ? null : '₱' + Number(n).toLocaleString('en-PH', { maximumFractionDigits: 2 });
 const effPrice = p => (p.promo != null && p.srp != null && p.promo < p.srp) ? p.promo : (p.srp ?? p.promo ?? 0);
@@ -56,7 +57,7 @@ function score(p, toks) {
 
 /* ---------- state ---------- */
 const st = {
-  tab: store.get('tab', 'onhand'),
+  tab: store.get('tab', 'all'),
   q: '',
   fams: new Set(),
   cats: new Set(),
@@ -64,7 +65,7 @@ const st = {
   layout: store.get('layout', 'grid'),
   cmp: store.get('cmp', []).filter(s => BY[s]),
 };
-if (!TABS.some(t => t.id === st.tab)) st.tab = 'onhand';
+if (!TABS.some(t => t.id === st.tab)) st.tab = 'all';
 
 /* ---------- filtering ---------- */
 function matches(opts = {}) {
@@ -97,7 +98,7 @@ const famKey = p => p.family === 'Others' ? (p.subfamily || '') : p.family;
 /* ---------- render: tabs ---------- */
 function renderTabs() {
   $('#tabs').innerHTML = TABS.map(t => {
-    const n = matches({ tab: t.id, ignoreCat: true }).length;
+    const n = matches({ tab: t.id, ignoreCat: true, ignoreFam: true }).length;
     return `<button class="tab ${t.cls || ''}" role="tab" data-tab="${t.id}" aria-selected="${t.id === st.tab}">${esc(t.label)}<span class="n">${n}</span></button>`;
   }).join('');
 }
@@ -116,7 +117,8 @@ function renderFilters() {
   const base = matches({ ignoreFam: true });
   const cnt = {};
   base.forEach(([p]) => cnt[p.family] = (cnt[p.family] || 0) + 1);
-  $('#famChips').innerHTML = FAMILIES.map(f => chip('fam', f, cnt[f] || 0, st.fams.has(f))).join('');
+  const tot = base.length;
+  $('#famChips').innerHTML = `<button class="fam ${st.fams.size ? '' : 'on'}" data-famall>All families<span>${tot}</span></button>` + FAMILIES.map(f => `<button class="fam ${st.fams.has(f) ? 'on' : ''}" data-fam="${esc(f)}" ${!cnt[f] && !st.fams.has(f) ? 'disabled' : ''}><i class="cb"></i>${esc(f)}<span>${cnt[f] || 0}</span></button>`).join('');
   const n = st.fams.size + (multi ? st.cats.size : 0);
   $('#filterCount').hidden = !n; $('#filterCount').textContent = n;
 }
@@ -143,18 +145,18 @@ function priceCells(p) {
 }
 function card(p) {
   const inCmp = st.cmp.includes(p.sku);
-  const badges = [hasPromo(p) && '<span class="badge promo">Promo</span>', isNew(p) && '<span class="badge new">New</span>', p.discontinued && '<span class="badge disc">Discontinued</span>'].filter(Boolean).join('');
+  const badges = [p.hot && '<span class="badge hot">Hot</span>', hasPromo(p) && '<span class="badge promo">Promo</span>', isNew(p) && '<span class="badge new">New</span>', p.discontinued && '<span class="badge disc">Specs N/A</span>'].filter(Boolean).join('');
   return `<article class="card ${inCmp ? 'sel' : ''}" data-sku="${esc(p.sku)}">
     <div class="thumb" data-open="${esc(p.sku)}">${imgTag(p)}<div class="badges">${badges}</div>
       <label class="cmp" onclick="event.stopPropagation()"><input type="checkbox" data-cmp="${esc(p.sku)}" ${inCmp ? 'checked' : ''}>Compare</label></div>
     <div class="body">
       <div class="meta"><span>${esc(p.category)}</span><span class="dot"></span><span>${esc(p.subfamily || p.family)}</span></div>
-      <h3 class="pname" data-open="${esc(p.sku)}">${hl(p.name)}</h3>
+      <h3 class="pname" data-open="${esc(p.sku)}">${hl(short(p.name))}</h3>
       <dl class="ids">
         <dt>Model</dt><dd>${hl(p.sku)}<button class="cp" data-copy="${esc(p.sku)}" aria-label="Copy model number" title="Copy model number">${ICON.copy}</button></dd>
         <dt>UPC</dt><dd>${p.upc ? hl(p.upc) + `<button class="cp" data-copy="${esc(p.upc)}" aria-label="Copy UPC" title="Copy UPC">${ICON.copy}</button>` : '<span style="color:var(--dim)">Not available</span>'}</dd>
       </dl>
-      ${p.ksp && p.ksp.length ? `<ul class="ksp">${p.ksp.map(k => `<li>${esc(k)}</li>`).join('')}</ul>` : ''}
+      <ul class="ksp">${(p.ksp || []).map(k => `<li>${esc(k)}</li>`).join('')}</ul>
       <div class="prices">${priceCells(p)}</div>
       <div class="actions">
         <button class="btn" data-copycard="${esc(p.sku)}">${ICON.copy}Copy info</button>
@@ -183,10 +185,10 @@ function render() {
   }
   $('#searchNote').innerHTML = note;
   renderTabs(); renderFilters(); renderTray();
-  const relOpt = $('#sort option[value=relevance]');
-  if (st.q && !relOpt) $('#sort').insertAdjacentHTML('afterbegin', '<option value="relevance">Best match</option>');
-  if (!st.q && relOpt) { relOpt.remove(); if (st.sort === 'relevance') st.sort = 'new'; }
-  $('#sort').value = st.sort;
+  if (!st.q && st.sort === 'relevance') st.sort = 'new';
+  document.querySelectorAll('[data-sort]').forEach(b => b.classList.toggle('on', b.dataset.sort === st.sort));
+  $('#sortBtn .lbl').textContent = { new: 'Newest', 'price-asc': 'Price ↑', 'price-desc': 'Price ↓', family: 'Family', relevance: 'Best match' }[st.sort];
+  $('#expN').textContent = list.length;
   $('#gridBtn').classList.toggle('on', st.layout === 'grid');
   $('#listBtn').classList.toggle('on', st.layout === 'list');
 }
@@ -300,7 +302,7 @@ function compareView() {
   return `<button class="icon-btn sheet-close" data-close aria-label="Close">×</button>
   <div class="cmp-head"><h1>Compare ${esc(ps[0].category)}</h1><p>${ps.length} models side by side. Green rows differ; lowest selling price highlighted.</p>
     <label class="cmp-opts"><input type="checkbox" id="onlyDiff" ${onlyDiff ? 'checked' : ''}> Show only differences</label></div>
-  <div class="cmp-wrap"><table class="ctable"><thead><tr><th></th>${ps.map(p => `<th class="ch"><div data-open="${esc(p.sku)}" style="cursor:pointer">${p.image ? `<img src="${esc(p.image)}" alt="">` : ''}<div class="n">${esc(p.name)}</div><div class="m">${esc(p.sku)}</div></div>
+  <div class="cmp-wrap"><table class="ctable"><thead><tr><th></th>${ps.map(p => `<th class="ch"><div data-open="${esc(p.sku)}" style="cursor:pointer">${p.image ? `<img src="${esc(p.image)}" alt="">` : ''}<div class="n">${esc(short(p.name))}</div><div class="m">${esc(p.sku)}</div></div>
     <button class="btn link" data-uncmp="${esc(p.sku)}" style="margin-top:6px;font-size:12px">Remove</button></th>`).join('')}</tr></thead><tbody>${body}</tbody></table></div>`;
 }
 
@@ -322,8 +324,8 @@ function detailView(p) {
     <div class="d-img">${imgTag(p)}${imgNote ? `<div class="note">${imgNote}</div>` : ''}</div>
     <div class="d-info">
       <div class="meta"><span>${esc(p.category)}</span><span class="dot"></span><span>${esc(p.subfamily || p.family)}</span>
-        ${hasPromo(p) ? '<span class="badge promo">Promo</span>' : ''}${isNew(p) ? '<span class="badge new">New</span>' : ''}${p.discontinued ? '<span class="badge disc">Discontinued</span>' : ''}</div>
-      <h1>${esc(p.name)}</h1>
+        ${p.hot ? '<span class="badge hot">Hot</span>' : ''}${hasPromo(p) ? '<span class="badge promo">Promo</span>' : ''}${isNew(p) ? '<span class="badge new">New</span>' : ''}${p.discontinued ? '<span class="badge disc">Specs not available</span>' : ''}</div>
+      <h1>${esc(short(p.name))}</h1>
       <p class="sub">${esc(p.pricelist_name)}</p>
       ${p.description ? `<p class="desc">${esc(p.description)}</p>` : ''}
       <div class="d-prices">${priceCells(p)}</div>
@@ -338,7 +340,7 @@ function detailView(p) {
       </div>
     </div>
   </div>
-  ${p.discontinued ? `<p class="disc-note">This model has been discontinued by Razer and no longer has an official product page, so detailed specifications aren't available. Pricing above is from the current Iontech price list.</p>` : `<div class="d-specs">${secs}</div>`}`;
+  ${p.discontinued ? `<p class="disc-note">Specs not available — Razer no longer publishes an official product page for this model, so detailed specifications can't be shown. Pricing above is from the current Iontech price list.</p>` : `<div class="d-specs">${secs}</div>`}`;
 }
 
 /* ---------- overlay routing ---------- */
@@ -363,11 +365,14 @@ function go(hash) { pushed = true; location.hash = hash; }
 
 /* ---------- events ---------- */
 document.addEventListener('click', e => {
-  const t = e.target.closest('[data-tab],[data-fam],[data-cat],[data-open],[data-copy],[data-copycard],[data-copyfull],[data-copyimg],[data-uncmp],[data-cmptoggle],[data-close]');
+  const t = e.target.closest('[data-sort],[data-export],[data-tab],[data-fam],[data-famall],[data-cat],[data-open],[data-copy],[data-copycard],[data-copyfull],[data-copyimg],[data-uncmp],[data-cmptoggle],[data-close]');
   if (!t) { if (e.target.id === 'overlay') closeOverlay(); return; }
   const d = t.dataset;
+  if (d.sort) { st.sort = d.sort; closeMenus(); render(); return; }
+  if (d.export) { closeMenus(); const list = sorted(matches()); d.export === 'xlsx' ? exportXlsx(list) : exportPdf(list); return; }
   if (d.tab) { st.tab = d.tab; st.cats.clear(); store.set('tab', st.tab); render(); window.scrollTo({ top: 0 }); t.scrollIntoView?.({ inline: 'center', block: 'nearest' }); }
   else if (d.fam) { st.fams.has(d.fam) ? st.fams.delete(d.fam) : st.fams.add(d.fam); render(); }
+  else if ('famall' in d) { st.fams.clear(); render(); }
   else if (d.cat) { st.cats.has(d.cat) ? st.cats.delete(d.cat) : st.cats.add(d.cat); render(); }
   else if (d.open) { e.preventDefault(); go('/p/' + encodeURIComponent(d.open)); }
   else if (d.copy) copyText(d.copy, 'Copied ' + d.copy);
@@ -385,12 +390,14 @@ document.addEventListener('change', e => {
 $('#q').addEventListener('input', e => {
   st.q = e.target.value.trim();
   $('#qClear').hidden = !st.q;
-  if (st.q && !$('#sort option[value=relevance]')) st.sort = 'relevance';
+  if (st.q && st.sort === 'new') st.sort = 'relevance';
   cancelAnimationFrame(renderTimer); renderTimer = requestAnimationFrame(render);
 });
 $('#q').addEventListener('keydown', e => { if (e.key === 'Escape') { e.target.value = ''; e.target.dispatchEvent(new Event('input')); } });
 $('#qClear').onclick = () => { $('#q').value = ''; $('#q').dispatchEvent(new Event('input')); $('#q').focus(); };
-$('#sort').onchange = e => { st.sort = e.target.value; if (st.sort !== 'relevance') store.set('sort', st.sort); render(); };
+function closeMenus(){ document.querySelectorAll('.menu').forEach(m => m.hidden = true); }
+for (const [b, m] of [['#sortBtn', '#sortMenu'], ['#exportBtn', '#exportMenu']]) $(b).onclick = e => { e.stopPropagation(); const open = $(m).hidden; closeMenus(); $(m).hidden = !open; };
+document.addEventListener('click', e => { if (!e.target.closest('.dd')) closeMenus(); });
 $('#gridBtn').onclick = () => { st.layout = 'grid'; store.set('layout', 'grid'); render(); };
 $('#listBtn').onclick = () => { st.layout = 'list'; store.set('layout', 'list'); render(); };
 const filtersEl = $('#filters');
@@ -421,6 +428,96 @@ if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
 }
 
 $('#srcLine').textContent = `${C.meta.source || ''} · ${P.length} models · Updated ${C.meta.built ? C.meta.built.slice(0, 10) : ''}`;
+
+/* ---------- export ---------- */
+function scopeLabel() {
+  const t = TABS.find(x => x.id === st.tab).label;
+  const bits = [t];
+  if (st.fams.size) bits.push([...st.fams].join(', '));
+  if (st.cats.size && MULTI_CAT.has(st.tab)) bits.push([...st.cats].join(', '));
+  if (st.q) bits.push(`search “${st.q}”`);
+  return bits.join(' · ');
+}
+const stamp = () => new Date().toISOString().slice(0, 10);
+function fileBase() { return `Razer-Pricelist-${TABS.find(x => x.id === st.tab).label.replace(/\s+/g, '-')}-${stamp()}`; }
+function download(blob, name) {
+  const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: name });
+  document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+}
+// minimal ZIP (stored, no compression) + CRC32 — keeps the site dependency-free and offline
+const CRC = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+const crc32 = b => { let c = 0xFFFFFFFF; for (let i = 0; i < b.length; i++) c = CRC[(c ^ b[i]) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; };
+function zip(files) {
+  const enc = new TextEncoder(), parts = [], cen = []; let off = 0;
+  for (const [name, text] of files) {
+    const nm = enc.encode(name), data = enc.encode(text), crc = crc32(data);
+    const h = new DataView(new ArrayBuffer(30));
+    h.setUint32(0, 0x04034b50, true); h.setUint16(4, 20, true); h.setUint16(8, 0, true);
+    h.setUint32(14, crc, true); h.setUint32(18, data.length, true); h.setUint32(22, data.length, true); h.setUint16(26, nm.length, true);
+    parts.push(new Uint8Array(h.buffer), nm, data);
+    const c = new DataView(new ArrayBuffer(46));
+    c.setUint32(0, 0x02014b50, true); c.setUint16(4, 20, true); c.setUint16(6, 20, true);
+    c.setUint32(16, crc, true); c.setUint32(20, data.length, true); c.setUint32(24, data.length, true); c.setUint16(28, nm.length, true); c.setUint32(42, off, true);
+    cen.push(new Uint8Array(c.buffer), nm);
+    off += 30 + nm.length + data.length;
+  }
+  const csize = cen.reduce((s, x) => s + x.length, 0);
+  const e = new DataView(new ArrayBuffer(22));
+  e.setUint32(0, 0x06054b50, true); e.setUint16(8, files.length, true); e.setUint16(10, files.length, true); e.setUint32(12, csize, true); e.setUint32(16, off, true);
+  return new Blob([...parts, ...cen, new Uint8Array(e.buffer)], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+}
+function exportXlsx(list) {
+  if (!list.length) return toast('Nothing to export');
+  const x = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '');
+  const col = i => String.fromCharCode(65 + i);
+  const head = ['Category', 'Sub-Category', 'Product Family', 'Model Number', 'Product Name', 'UPC', 'Material Code', 'Key Selling Points', 'Regular SRP', 'Promo SRP', 'Dealer Price', 'Hot Item', 'Specs'];
+  const widths = [13, 22, 16, 22, 52, 16, 15, 70, 13, 13, 13, 9, 20];
+  const strCell = (r, i, v, s = 0) => `<c r="${col(i)}${r}" t="inlineStr"${s ? ` s="${s}"` : ''}><is><t xml:space="preserve">${x(v)}</t></is></c>`;
+  const numCell = (r, i, v) => v == null ? '' : `<c r="${col(i)}${r}" s="2"><v>${v}</v></c>`;
+  const rows = [`<row r="1">${head.map((h, i) => strCell(1, i, h, 1)).join('')}</row>`];
+  list.forEach((p, k) => {
+    const r = k + 2;
+    rows.push(`<row r="${r}">` + [
+      strCell(r, 0, p.category), strCell(r, 1, p.subcategory), strCell(r, 2, p.subfamily || p.family), strCell(r, 3, p.sku),
+      strCell(r, 4, p.name), strCell(r, 5, p.upc), strCell(r, 6, p.material), strCell(r, 7, (p.ksp || []).join('; ')),
+      numCell(r, 8, p.srp), numCell(r, 9, p.promo), numCell(r, 10, p.dp), strCell(r, 11, p.hot ? 'Yes' : ''),
+      strCell(r, 12, p.discontinued ? 'Specs not available' : 'Available'),
+    ].join('') + '</row>');
+  });
+  const last = `${col(head.length - 1)}${list.length + 1}`;
+  const sheet = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><cols>${widths.map((w, i) => `<col min="${i + 1}" max="${i + 1}" width="${w}" customWidth="1"/>`).join('')}</cols><sheetData>${rows.join('')}</sheetData><autoFilter ref="A1:${last}"/></worksheet>`;
+  const styles = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><numFmts count="1"><numFmt numFmtId="164" formatCode="&quot;₱&quot;#,##0"/></numFmts><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font></fonts><fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF1B1F1B"/></patternFill></fill></fills><borders count="1"><border/></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="3"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/><xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`;
+  const files = [
+    ['[Content_Types].xml', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>'],
+    ['_rels/.rels', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>'],
+    ['xl/workbook.xml', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Razer Pricelist" sheetId="1" r:id="rId1"/></sheets><definedNames><definedName name="_xlnm._FilterDatabase" localSheetId="0" hidden="1">\'Razer Pricelist\'!$A$1:$' + col(head.length - 1) + '$' + (list.length + 1) + '</definedName></definedNames></workbook>'],
+    ['xl/_rels/workbook.xml.rels', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>'],
+    ['xl/styles.xml', styles],
+    ['xl/worksheets/sheet1.xml', sheet],
+  ];
+  download(zip(files), fileBase() + '.xlsx');
+  toast(`Excel file saved (${list.length} products)`);
+}
+function exportPdf(list) {
+  if (!list.length) return toast('Nothing to export');
+  const pv = $('#printView');
+  const rows = list.map(p => `<tr>
+    <td class="pi">${p.image ? `<img src="${esc(p.image)}" alt="">` : ''}</td>
+    <td><b>${esc(short(p.name))}</b>${p.hot ? ' <em class="ph">HOT</em>' : ''}${hasPromo(p) ? ' <em class="pp">PROMO</em>' : ''}<div class="pm">${esc(p.sku)}${p.upc ? ' · UPC ' + esc(p.upc) : ''}</div><div class="pk">${esc((p.ksp || []).join(' • '))}</div></td>
+    <td>${esc(p.category)}<div class="pm">${esc(p.subfamily || p.family)}</div></td>
+    <td class="n">${peso(p.srp) ?? '—'}</td><td class="n pr">${hasPromo(p) ? peso(p.promo) : '—'}</td><td class="n">${peso(p.dp) ?? '—'}</td></tr>`).join('');
+  pv.innerHTML = `<header><img src="assets/iontech-logo-dark.png" alt="Iontech"><div><h1>Razer Pricelist</h1><p>${esc(scopeLabel())} · ${list.length} products · ${esc(C.meta.source || '')}</p></div><span>Printed ${new Date().toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' })}</span></header>
+  <table><thead><tr><th></th><th>Product</th><th>Category</th><th class="n">SRP</th><th class="n">Promo SRP</th><th class="n">DP</th></tr></thead><tbody>${rows}</tbody></table>`;
+  const imgs = [...pv.querySelectorAll('img')];
+  Promise.all(imgs.map(i => i.complete ? 0 : new Promise(r => { i.onload = i.onerror = r; }))).then(() => {
+    const old = document.title; document.title = fileBase();
+    document.body.classList.add('printing');
+    window.print();
+    setTimeout(() => { document.body.classList.remove('printing'); document.title = old; }, 500);
+  });
+  toast('Choose “Save as PDF” in the print window');
+}
+
 render();
 route();
 })();
